@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>麒麟の翼 KIRIN'S WINGS ｜ 東西四位一体 統合運命鑑定殿</title>
+  <meta name="description" content="四柱推命・西洋占星術・カバラ数秘術・神聖タロットを統合した、古代文献に基づく本格運命鑑定Webアプリケーション『麒麟の翼』。魂の器とバイオリズム、具体的処方箋を導きます。">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 背景星空Canvas -->
+  <canvas id="star-canvas"></canvas>
+
+  <!-- 本格立体3D天球儀（3D Armillary Sphere）背景アニメーション -->
+  <div class="armillary-viewport">
+    <div id="main-armillary-sphere" class="armillary-sphere">
+      <!-- 垂直子午線環 (Meridian) -->
+      <div class="armillary-ring ring-meridian"></div>
+      <!-- 水平赤道環 (Equator) -->
+      <div class="armillary-ring ring-equator"></div>
+      <!-- 23.5度傾斜 黄道帯 (Ecliptic Band) -->
+      <div class="armillary-ring ring-ecliptic">
+        <span class="zodiac-tick z-aries">♈</span>
+        <span class="zodiac-tick z-taurus">♉</span>
+        <span class="zodiac-tick z-gemini">♊</span>
+        <span class="zodiac-tick z-cancer">♋</span>
+        <span class="zodiac-tick z-leo">♌</span>
+        <span class="zodiac-tick z-virgo">♍</span>
+        <span class="zodiac-tick z-libra">♎</span>
+        <span class="zodiac-tick z-scorpio">♏</span>
+        <span class="zodiac-tick z-sagittarius">♐</span>
+        <span class="zodiac-tick z-capricorn">♑</span>
+        <span class="zodiac-tick z-aquarius">♒</span>
+        <span class="zodiac-tick z-pisces">♓</span>
+      </div>
+      <!-- 斜交環 (Colure 1 & 2) -->
+      <div class="armillary-ring ring-colure-1"></div>
+      <div class="armillary-ring ring-colure-2"></div>
+      <!-- 地軸極棒 (Polar Axis) -->
+      <div class="armillary-axis"></div>
+      <!-- 中心の神秘コア (Terrestrial Core) -->
+      <div class="armillary-core">
+        <div class="core-globe"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🧭 立体3D天球儀高速自転・召喚オーバーレイ (2秒間のドラマチック演出) -->
+  <div id="summoning-overlay" class="summoning-overlay">
+    <div class="summoning-content">
+      <div class="summon-viewport">
+        <div class="summon-armillary-sphere">
+          <div class="summon-ring ring-meridian"></div>
+          <div class="summon-ring ring-equator"></div>
+          <div class="summon-ring ring-ecliptic"></div>
+          <div class="summon-ring ring-colure-1"></div>
+          <div class="summon-ring ring-colure-2"></div>
+          <div class="summon-axis"></div>
+          <div class="summon-core">
+            <div class="core-globe">✨</div>
+          </div>
+        </div>
+      </div>
+      <h3 class="summon-title">時空の天球儀が同調中…</h3>
+      <p class="summon-subtitle" id="summon-step-text">四柱推命・八字の命式を算出しています</p>
+      <div class="summon-bar-track">
+        <div class="summon-bar-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-wrapper">
+    <!-- ヘッダー -->
+    <header class="header">
+      <div class="brand-emblem">✨ THE WINGS OF KIRIN ・ 麒麟の翼 ✨</div>
+      <div class="title-container">
+        <div class="mini-astrolabe-icon">
+          <div class="mini-ring mini-r1"></div>
+          <div class="mini-ring mini-r2"></div>
+          <div class="mini-core"></div>
+        </div>
+        <h1 class="title">麒 麟 の 翼</h1>
+        <div class="mini-astrolabe-icon mirror">
+          <div class="mini-ring mini-r1"></div>
+          <div class="mini-ring mini-r2"></div>
+          <div class="mini-core"></div>
+        </div>
+      </div>
+      <p class="subtitle">東西四位一体 統合運命鑑定殿 ― 四柱推命 × 西洋占星術 × カバラ数秘 × 神聖タロット</p>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main>
+      <!-- 入力セクション -->
+      <section id="input-section" class="input-section glass-card">
+        <h2 class="section-title">宿命の刻印を入力</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>生年月日 (西暦)</label>
+            <div class="birthdate-select-group">
+              <div class="select-col">
+                <select id="birth-year" required></select>
+                <span class="unit-text">年</span>
+              </div>
+              <div class="select-col">
+                <select id="birth-month" required></select>
+                <span class="unit-text">月</span>
+              </div>
+              <div class="select-col">
+                <select id="birth-day" required></select>
+                <span class="unit-text">日</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="birthtime">出生時刻 (任意)</label>
+            <input type="time" id="birthtime" value="12:00">
+          </div>
+          <div class="form-group">
+            <label for="query-theme">占いたい主題 (フォーカス)</label>
+            <select id="query-theme">
+              <option value="general">総合運・人生の転換点</option>
+              <option value="career">事業・仕事・天職</option>
+              <option value="wealth">金運・投資・資産形成</option>
+              <option value="relationship">人間関係・絆・パートナー</option>
+            </select>
+          </div>
+        </div>
+        <button id="btn-start" class="btn-summon" type="button">天球儀を回転させ、翼を広げる</button>
+      </section>
+
+      <!-- タロット召喚セクション -->
+      <section id="tarot-section" class="tarot-section glass-card">
+        <div class="tarot-section-header">
+          <div>
+            <h2 class="section-title" style="margin-bottom: 6px;">神託のタロットを選ぶ</h2>
+            <p style="color: #94a3b8; font-size: 13.5px; margin-bottom: 0;">
+              心を静かに整え、直感で引き寄せられるカードを1枚選んでタップしてください。
+            </p>
+          </div>
+          <!-- シャッフル操作バー -->
+          <div class="shuffle-control-bar">
+            <button id="btn-shuffle" class="btn-shuffle" type="button">
+              <span class="shuffle-icon">🔀</span>
+              <span class="shuffle-text">念を込めてシャッフル</span>
+            </button>
+            <span class="shuffle-count-badge" id="shuffle-count-badge">シャッフル済: 0回</span>
+          </div>
+        </div>
+        <div id="deck-container" class="deck-container">
+          <!-- JSで6枚のカードが生成される -->
+        </div>
+      </section>
+
+      <!-- 統合鑑定書セクション -->
+      <section id="decree-section" class="decree-section glass-card">
+        <div class="decree-header">
+          <div class="decree-badge">The Kirin's Grand Decree</div>
+          <h2 class="decree-title">麒麟の翼 万象統合鑑定書</h2>
+          <p style="font-size: 13px; color: #94a3b8;">古代東洋と西洋の文献に裏打ちされた四位一体解析</p>
+        </div>
+
+        <!-- 4大運気スコア -->
+        <div class="scores-grid">
+          <div class="score-card">
+            <div class="score-label">総合運気</div>
+            <div class="score-value"><span id="score-total">--</span><span class="score-unit">点</span></div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">事業・決断運</div>
+            <div class="score-value"><span id="score-career">--</span><span class="score-unit">点</span></div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">財運・投資運</div>
+            <div class="score-value"><span id="score-wealth">--</span><span class="score-unit">点</span></div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">精神・健康運</div>
+            <div class="score-value"><span id="score-spirit">--</span><span class="score-unit">点</span></div>
+          </div>
+        </div>
+
+        <!-- 🧭 麒麟のデイリーコンパス (本日の行動指南) -->
+        <article id="daily-compass-block" class="daily-compass-card">
+          <div class="compass-header">
+            <div class="compass-badge">DAILY ACTION PROTOCOL</div>
+            <div class="compass-date-badge" id="compass-date-badge">2026.10.25 (日)</div>
+          </div>
+
+          <div class="compass-title-row">
+            <div class="compass-vibe-icon" id="compass-vibe-icon">🧭</div>
+            <div class="compass-vibe-text">
+              <h3 class="compass-title" id="compass-vibe-title">--</h3>
+              <p class="compass-subtitle" id="compass-vibe-sub">--</p>
+            </div>
+            <div class="compass-energy-meter">
+              <div class="energy-label">気流強度</div>
+              <div class="energy-val"><span id="compass-energy-val">--</span><span class="energy-unit">%</span></div>
+            </div>
+          </div>
+
+          <!-- 勝負時間帯 (天乙貴人の刻) -->
+          <div class="compass-peak-time">
+            <div class="peak-time-icon">🕒</div>
+            <div class="peak-time-content">
+              <div class="peak-time-header">
+                <span class="peak-time-badge">本日の勝負時間帯</span>
+                <span class="peak-time-val" id="compass-peak-val">--:-- 〜 --:--</span>
+              </div>
+              <div class="peak-time-desc" id="compass-peak-desc">重要商談、大きな決断、勝負連絡に最大の天恵が宿る刻</div>
+            </div>
+          </div>
+
+          <!-- 3大行動プロトコル -->
+          <div class="compass-protocol-grid">
+            <div class="protocol-box">
+              <div class="protocol-box-header">
+                <span class="protocol-icon">💼</span>
+                <span class="protocol-name">事業・決断</span>
+              </div>
+              <div class="protocol-box-text" id="compass-protocol-career">--</div>
+            </div>
+            <div class="protocol-box">
+              <div class="protocol-box-header">
+                <span class="protocol-icon">📈</span>
+                <span class="protocol-name">投資・財運</span>
+              </div>
+              <div class="protocol-box-text" id="compass-protocol-wealth">--</div>
+            </div>
+            <div class="protocol-box">
+              <div class="protocol-box-header">
+                <span class="protocol-icon">🤝</span>
+                <span class="protocol-name">対人・対話</span>
+              </div>
+              <div class="protocol-box-text" id="compass-protocol-relation">--</div>
+            </div>
+          </div>
+
+          <!-- 禁忌・地雷回避 ＆ 微量開運チャージ -->
+          <div class="compass-footer-grid">
+            <div class="compass-taboo-box">
+              <div class="taboo-label">⚠️ 本日の禁忌（地雷回避）</div>
+              <div class="taboo-text" id="compass-taboo-text">--</div>
+            </div>
+            <div class="compass-lucky-box">
+              <div class="lucky-label">🍀 デイリーチャージ（微量開運）</div>
+              <div class="lucky-text" id="compass-lucky-text">--</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 五行エネルギー発光レーダーチャート -->
+        <div class="radar-block">
+          <div style="font-size: 15px; font-weight: 700; color: #38bdf8; margin-bottom: 8px;">
+            ☯️ 五行エネルギー分布 (木・火・土・金・水)
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 15px;">
+            十二支の内包蔵干（余気・中気・本気）と相生循環を精密算出した生命エネルギー分布
+          </p>
+          <canvas id="elements-radar-canvas" width="300" height="260"></canvas>
+
+          <!-- 五行プロファイル解析枠 -->
+          <div class="elements-profile-box">
+            <div class="elements-profile-header">
+              <span class="elements-type-badge">五行プロファイル</span>
+              <span class="elements-profile-title" id="elements-profile-title">--</span>
+            </div>
+            <p class="elements-profile-desc" id="elements-profile-desc">--</p>
+
+            <div class="elements-remedy-note">
+              <div class="remedy-note-title" id="elements-remedy-title">--</div>
+              <div class="remedy-note-text" id="elements-remedy-text">--</div>
+            </div>
+
+            <div class="elements-philosophy">
+              📜 滴天髄の格言：「有病方為貴（偏りがあってこそ非凡な器となる）」── この五行の偏りこそが、他者には真似できないあなたの唯一無二の突破力です。
+            </div>
+          </div>
+        </div>
+
+        <!-- 魂の肖像 -->
+        <article class="decree-block">
+          <h3 class="block-title">🌌 魂の器と本質構造 (Soul Portrait)</h3>
+          <div id="decree-soul-title" style="font-weight: 700; color: #38bdf8; margin-bottom: 10px;"></div>
+          <div id="decree-soul-text" class="block-content"></div>
+        </article>
+
+        <!-- 2026年の運命サイクル -->
+        <article class="decree-block">
+          <h3 class="block-title">⏳ 2026年 運命の現在地 (Temporal Cycle)</h3>
+          <div id="decree-year-text" class="block-content"></div>
+        </article>
+
+        <!-- タロット神託 ＆ 3大実戦処方箋 -->
+        <article class="decree-block" style="border-left-color: #c084fc;">
+          <h3 class="block-title">🔮 今この瞬間の神託と実戦指針 (Tarot Oracle)</h3>
+          <div id="decree-tarot-text" class="block-content"></div>
+        </article>
+
+        <!-- 五行調候・開運処方箋 -->
+        <article class="decree-block" style="border-left-color: #10b981;">
+          <h3 class="block-title">🌿 五行調候・開運処方箋 (Harmonic Remedy)</h3>
+          <p style="font-size: 14px; color: #94a3b8; margin-bottom: 12px;">
+            あなたの命式で現在不足しているエネルギーを補うことで、運気の循環が最大化されます。
+          </p>
+          <div class="remedy-grid">
+            <div class="remedy-item">
+              <div class="remedy-label">補うべき五行</div>
+              <div id="remedy-element" class="remedy-val" style="color: #34d399;">--</div>
+            </div>
+            <div class="remedy-item">
+              <div class="remedy-label">守護カラー</div>
+              <div id="remedy-color" class="remedy-val">--</div>
+            </div>
+            <div class="remedy-item">
+              <div class="remedy-label">開運アクション・アイテム</div>
+              <div id="remedy-item" class="remedy-val">--</div>
+            </div>
+            <div class="remedy-item">
+              <div class="remedy-label">吉方位</div>
+              <div id="remedy-direction" class="remedy-val">--</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 👑 プレミアム深層鑑定書（生涯10年年表）プレビュー -->
+        <div class="premium-card">
+          <div class="premium-badge">PREMIUM ORACLE DECREE</div>
+          <h3 class="premium-title">👑 生涯10年運気バイオリズム年表 (2026〜2035)</h3>
+          <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            あなたの数秘9年サイクルと四柱推命の五行循環から導かれた、今後10年間の勝負年・結実年・休息年の一覧です。
+          </p>
+          <div style="overflow-x: auto;">
+            <table class="timeline-table">
+              <thead>
+                <tr>
+                  <th>年 (西暦)</th>
+                  <th>数秘周期</th>
+                  <th>運勢格付け</th>
+                  <th>年運アドバイス</th>
+                </tr>
+              </thead>
+              <tbody id="timeline-tbody">
+                <!-- JSで動的生成 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SNSシェア用 神聖オラクルカード (Holy Card) -->
+        <div class="holy-card-container">
+          <div class="holy-card-header">KIRIN'S WINGS ・ 運命の神聖護符</div>
+          <div id="holy-card-title" class="holy-card-title"></div>
+          <div id="holy-card-tarot" class="holy-card-tarot"></div>
+          <div id="holy-card-meta" class="holy-card-meta"></div>
+          <div style="font-size: 11px; color: #64748b; letter-spacing: 1px;">
+            #麒麟の翼 #OMNI_ORACLE #運命鑑定
+          </div>
+        </div>
+
+        <!-- アクションボタン -->
+        <div class="decree-actions">
+          <button id="btn-reset" class="btn-secondary" type="button">🔄 もう一度占う</button>
+          <button id="btn-print" class="btn-print" type="button">📄 鑑定書を保存 / 印刷する</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- スクリプト読み込み -->
+  <script src="js/bazi.js"></script>
+  <script src="js/numerology.js"></script>
+  <script src="js/astrology.js"></script>
+  <script src="js/tarot.js"></script>
+  <script src="js/oracle_synthesis.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

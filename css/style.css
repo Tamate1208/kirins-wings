@@ -1,0 +1,1480 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Noto+Serif+JP:wght@400;600;700&family=Outfit:wght@300;400;600&display=swap');
+
+:root {
+  --bg-dark: #06080e;
+  --bg-card: rgba(15, 20, 32, 0.82);
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --border-gold: rgba(212, 175, 55, 0.35);
+  --border-gold-glow: rgba(245, 158, 11, 0.65);
+  --gold-primary: #f59e0b;
+  --gold-light: #fbbf24;
+  --gold-gradient: linear-gradient(135deg, #d4af37 0%, #fef08a 45%, #b45309 100%);
+  --cyan-glow: #38bdf8;
+  --purple-glow: #c084fc;
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --shadow-lux: 0 25px 50px -15px rgba(0, 0, 0, 0.9), 0 0 30px -5px rgba(245, 158, 11, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: 'Noto Serif JP', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* 背景Canvas星空 */
+#star-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* =============================================================
+   本格立体3D天球儀 (3D Armillary Sphere) モデリング
+   ============================================================= */
+.armillary-viewport {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 700px;
+  perspective: 1200px;
+  pointer-events: none;
+  z-index: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 25px rgba(245, 158, 11, 0.35));
+}
+
+.armillary-sphere {
+  position: relative;
+  width: 550px;
+  height: 550px;
+  transform-style: preserve-3d;
+  transform: rotateX(23.5deg) rotateY(0deg) rotateZ(-15deg);
+  animation: sphereRotate3D 45s linear infinite;
+  transition: transform 0.2s ease-out;
+}
+
+.armillary-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-sizing: border-box;
+  backface-visibility: visible;
+}
+
+/* 1. 垂直子午線環 (Meridian Ring) */
+.ring-meridian {
+  border: 3.5px solid rgba(245, 158, 11, 0.75);
+  box-shadow: inset 0 0 25px rgba(245, 158, 11, 0.25), 0 0 25px rgba(245, 158, 11, 0.35);
+  transform: rotateY(0deg);
+}
+
+/* 2. 水平赤道環 (Equatorial Ring) */
+.ring-equator {
+  border: 3px solid rgba(56, 189, 248, 0.75);
+  box-shadow: inset 0 0 30px rgba(56, 189, 248, 0.3), 0 0 30px rgba(56, 189, 248, 0.4);
+  transform: rotateX(90deg);
+}
+
+/* 3. 黄道帯 (Ecliptic Band) - 23.5度傾斜した幅広い金帯 */
+.ring-ecliptic {
+  border: 8px double rgba(245, 158, 11, 0.9);
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.6), inset 0 0 15px rgba(245, 158, 11, 0.4);
+  transform: rotateX(66.5deg) rotateZ(23.5deg);
+  background: radial-gradient(circle, transparent 65%, rgba(245, 158, 11, 0.08) 100%);
+}
+
+/* 十二星座シンボル */
+.zodiac-tick {
+  position: absolute;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fef08a;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.9);
+  user-select: none;
+}
+.z-aries       { top: 2%; left: 50%; transform: translateX(-50%); }
+.z-taurus      { top: 12%; right: 20%; }
+.z-gemini      { top: 26%; right: 7%; }
+.z-cancer      { top: 50%; right: 2%; transform: translateY(-50%); }
+.z-leo         { bottom: 26%; right: 7%; }
+.z-virgo       { bottom: 12%; right: 20%; }
+.z-libra       { bottom: 2%; left: 50%; transform: translateX(-50%); }
+.z-scorpio     { bottom: 12%; left: 20%; }
+.z-sagittarius { bottom: 26%; left: 7%; }
+.z-capricorn   { top: 50%; left: 2%; transform: translateY(-50%); }
+.z-aquarius    { top: 26%; left: 7%; }
+.z-pisces      { top: 12%; left: 20%; }
+
+/* 4. 二至分点環 (Colure 1 & 2) */
+.ring-colure-1 {
+  border: 2px dashed rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  transform: rotateY(60deg);
+}
+.ring-colure-2 {
+  border: 2px dashed rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+  transform: rotateY(120deg);
+}
+
+/* 5. 地軸極棒 (Polar Axis) */
+.armillary-axis {
+  position: absolute;
+  top: -12%;
+  left: 50%;
+  width: 5px;
+  height: 124%;
+  background: linear-gradient(180deg, #ffffff 0%, #fef08a 15%, #f59e0b 50%, #fef08a 85%, #ffffff 100%);
+  transform: translateX(-50%);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.9), 0 0 40px rgba(56, 189, 248, 0.5);
+  border-radius: 3px;
+}
+
+/* 6. 中心の地球・太陽コア (Terrestrial Globe) */
+.armillary-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  transform-style: preserve-3d;
+}
+
+.core-globe {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fef08a 25%, #f59e0b 60%, #0369a1 100%);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.9), 0 0 80px rgba(56, 189, 248, 0.7);
+  animation: coreBreathe 3.5s ease-in-out infinite;
+}
+
+/* 3D回転キーフレーム */
+@keyframes sphereRotate3D {
+  0% {
+    transform: rotateX(23.5deg) rotateY(0deg) rotateZ(-15deg);
+  }
+  100% {
+    transform: rotateX(23.5deg) rotateY(360deg) rotateZ(-15deg);
+  }
+}
+
+@keyframes coreBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.8)); }
+  50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 40px rgba(56, 189, 248, 1)); }
+}
+
+/* ヘッダーのミニ天球儀アイコン */
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.mini-astrolabe-icon {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  display: inline-block;
+}
+
+.mini-astrolabe-icon.mirror {
+  transform: scaleX(-1);
+}
+
+.mini-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.mini-r1 {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #f59e0b;
+  border-right-color: transparent;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+  animation: rotateClockwise 6s linear infinite;
+}
+
+.mini-r2 {
+  width: 26px;
+  height: 26px;
+  border: 1.5px dashed #38bdf8;
+  border-bottom-color: transparent;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  animation: rotateCounter 4s linear infinite;
+}
+
+.mini-core {
+  width: 8px;
+  height: 8px;
+  background: #fef08a;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+}
+
+/* 🧭 天球儀高速自転・召喚オーバーレイ (2秒間のドラマチック演出) */
+.summoning-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(6, 8, 14, 0.94);
+  backdrop-filter: blur(24px);
+  z-index: 9999;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.summoning-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.summoning-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* 召喚時立体3D天球儀 (Summon 3D Armillary Sphere) */
+.summon-viewport {
+  width: 240px;
+  height: 240px;
+  perspective: 900px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.summon-armillary-sphere {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  transform-style: preserve-3d;
+  animation: summonSphereSpin3D 2s cubic-bezier(0.3, 0, 0.1, 1) infinite;
+}
+
+.summon-armillary-sphere .summon-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.summon-armillary-sphere .ring-meridian {
+  border: 3px solid rgba(245, 158, 11, 0.9);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.7);
+  transform: rotateY(0deg);
+}
+
+.summon-armillary-sphere .ring-equator {
+  border: 3px solid rgba(56, 189, 248, 0.95);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.75);
+  transform: rotateX(90deg);
+}
+
+.summon-armillary-sphere .ring-ecliptic {
+  border: 6px double #fef08a;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.9);
+  transform: rotateX(66.5deg) rotateZ(23.5deg);
+}
+
+.summon-armillary-sphere .ring-colure-1 {
+  border: 2px dashed rgba(245, 158, 11, 0.8);
+  transform: rotateY(60deg);
+}
+
+.summon-armillary-sphere .ring-colure-2 {
+  border: 2px dashed rgba(56, 189, 248, 0.8);
+  transform: rotateY(120deg);
+}
+
+.summon-armillary-sphere .summon-axis {
+  position: absolute;
+  top: -15%;
+  left: 50%;
+  width: 4px;
+  height: 130%;
+  background: linear-gradient(180deg, #fff, #fef08a, #f59e0b, #fff);
+  transform: translateX(-50%);
+  box-shadow: 0 0 20px #f59e0b;
+}
+
+.summon-armillary-sphere .summon-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff, #f59e0b 60%, #38bdf8);
+  box-shadow: 0 0 30px #f59e0b, 0 0 60px #38bdf8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  animation: pulseGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes summonSphereSpin3D {
+  0% {
+    transform: rotateX(20deg) rotateY(0deg) rotateZ(-15deg) scale(0.9);
+  }
+  50% {
+    transform: rotateX(35deg) rotateY(540deg) rotateZ(15deg) scale(1.15);
+  }
+  100% {
+    transform: rotateX(20deg) rotateY(1080deg) rotateZ(-15deg) scale(1);
+  }
+}
+
+.summon-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fef08a;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  text-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+}
+
+.summon-subtitle {
+  font-size: 14px;
+  color: #38bdf8;
+  margin-bottom: 25px;
+  letter-spacing: 1px;
+}
+
+.summon-bar-track {
+  width: 260px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.summon-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #38bdf8, #f59e0b);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+  transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8)); }
+  50% { transform: scale(1.25); filter: drop-shadow(0 0 25px rgba(245, 158, 11, 1)); }
+}
+
+@keyframes rotateClockwise {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes rotateCounter {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+@keyframes rotateClockwise {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes rotateCounter {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+.app-wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 20px 80px 20px;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.brand-emblem {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 22px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid var(--border-gold);
+  border-radius: 9999px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--gold-light);
+  margin-bottom: 16px;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.title {
+  font-family: 'Cinzel', 'Noto Serif JP', serif;
+  font-size: clamp(32px, 6vw, 52px);
+  font-weight: 900;
+  letter-spacing: 8px;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 14px;
+  text-shadow: 0 0 35px rgba(245, 158, 11, 0.4);
+}
+
+.subtitle {
+  font-size: clamp(13px, 2vw, 15px);
+  color: var(--text-muted);
+  letter-spacing: 2px;
+}
+
+/* ガラスカードコンテナ */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-gold);
+  border-radius: 24px;
+  padding: 38px;
+  box-shadow: var(--shadow-lux);
+  transition: all 0.4s ease;
+}
+
+/* 入力セクション */
+.input-section {
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-family: 'Cinzel', 'Noto Serif JP', serif;
+  font-size: 20px;
+  text-align: center;
+  color: var(--gold-light);
+  margin-bottom: 25px;
+  position: relative;
+  letter-spacing: 2px;
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 2px;
+  background: var(--gold-gradient);
+  margin: 8px auto 0 auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 1px;
+}
+
+input, select {
+  background: rgba(10, 15, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: 'Outfit', 'Noto Serif JP', sans-serif;
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+}
+
+.birthdate-select-group {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr;
+  gap: 12px;
+}
+
+@media (max-width: 500px) {
+  .birthdate-select-group {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.select-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select-col select {
+  width: 100%;
+}
+
+.unit-text {
+  font-size: 14px;
+  color: var(--gold-light);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-summon {
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, #b45309 0%, #d4af37 50%, #f59e0b 100%);
+  border: none;
+  border-radius: 12px;
+  color: #07090e;
+  font-family: 'Cinzel', 'Noto Serif JP', serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-summon:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -5px rgba(245, 158, 11, 0.65);
+}
+
+/* タロットセクションヘッダー ＆ シャッフルUI */
+.tarot-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 25px;
+  text-align: left;
+}
+
+.shuffle-control-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-shuffle {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(56, 189, 248, 0.15) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.6);
+  border-radius: 9999px;
+  padding: 8px 18px;
+  color: #fef08a;
+  font-family: 'Outfit', 'Noto Serif JP', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+}
+
+.btn-shuffle:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35) 0%, rgba(56, 189, 248, 0.25) 100%);
+  border-color: #fef08a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+}
+
+.btn-shuffle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shuffle-count-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* シャッフルアニメーション中 */
+.deck-container.shuffling .tarot-card {
+  pointer-events: none;
+}
+
+.deck-container.shuffling .tarot-card:nth-child(1) { animation: shuffleLeft 0.75s ease-in-out infinite alternate; }
+.deck-container.shuffling .tarot-card:nth-child(2) { animation: shuffleRight 0.75s ease-in-out infinite alternate 0.1s; }
+.deck-container.shuffling .tarot-card:nth-child(3) { animation: shuffleLeft 0.75s ease-in-out infinite alternate 0.2s; }
+.deck-container.shuffling .tarot-card:nth-child(4) { animation: shuffleRight 0.75s ease-in-out infinite alternate 0.15s; }
+.deck-container.shuffling .tarot-card:nth-child(5) { animation: shuffleLeft 0.75s ease-in-out infinite alternate 0.25s; }
+.deck-container.shuffling .tarot-card:nth-child(6) { animation: shuffleRight 0.75s ease-in-out infinite alternate 0.05s; }
+
+@keyframes shuffleLeft {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-50px, -20px) rotate(-12deg) scale(1.06); box-shadow: 0 0 25px rgba(245, 158, 11, 0.8); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes shuffleRight {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(50px, 20px) rotate(12deg) scale(1.06); box-shadow: 0 0 25px rgba(56, 189, 248, 0.8); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+/* タロットシャッフル・召喚セクション */
+.tarot-section {
+  display: none;
+  text-align: center;
+  margin-top: 30px;
+}
+
+.deck-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 35px 0;
+  perspective: 1200px;
+}
+
+/* 3Dパララックス＆光沢タロットカード */
+.tarot-card {
+  width: 115px;
+  height: 190px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+  border: 2px solid var(--border-gold);
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+  transform-style: preserve-3d;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+/* 箔押し光沢 (Foil Shimmer) */
+.tarot-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 65%
+  );
+  transform: rotate(25deg);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.tarot-card:hover::after {
+  opacity: 1;
+}
+
+.tarot-card:hover {
+  border-color: var(--gold-light);
+  box-shadow: 0 18px 35px rgba(245, 158, 11, 0.45);
+}
+
+.tarot-card.flipped {
+  transform: rotateY(180deg) scale(1.12);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.8);
+}
+
+.card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+.card-back-pattern {
+  width: 82%;
+  height: 86%;
+  border: 1px dashed var(--border-gold);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  color: var(--gold-light);
+  box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.card-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #182234 0%, #0c121d 100%);
+  border: 2px solid var(--gold-light);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  text-align: center;
+}
+
+.card-front-number {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--gold-light);
+}
+
+.card-front-symbol {
+  font-size: 40px;
+  margin: 10px 0;
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.7));
+}
+
+.card-front-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 鑑定書セクション */
+.decree-section {
+  display: none;
+  margin-top: 40px;
+  animation: fadeIn 0.8s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.decree-header {
+  text-align: center;
+  padding-bottom: 25px;
+  border-bottom: 1px solid var(--border-gold);
+  margin-bottom: 30px;
+}
+
+.decree-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--cyan-glow);
+  text-transform: uppercase;
+}
+
+.decree-title {
+  font-size: clamp(24px, 4vw, 32px);
+  color: var(--gold-light);
+  margin: 10px 0;
+  letter-spacing: 3px;
+}
+
+/* スコアグリッド */
+.scores-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 35px;
+}
+
+@media (max-width: 768px) {
+  .scores-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.score-card {
+  background: rgba(10, 15, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.score-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--gold-gradient);
+}
+
+.score-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.score-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--gold-light);
+}
+
+.score-unit {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* 🧭 麒麟のデイリーコンパス (本日の行動指南) スタイリング */
+.daily-compass-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 35px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5), inset 0 0 25px rgba(245, 158, 11, 0.06);
+  backdrop-filter: blur(16px);
+}
+
+.daily-compass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b 0%, #38bdf8 50%, #f59e0b 100%);
+}
+
+.compass-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.compass-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.compass-date-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #38bdf8;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.compass-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compass-vibe-icon {
+  font-size: 38px;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+}
+
+.compass-vibe-text {
+  flex: 1;
+}
+
+.compass-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fef08a;
+  margin-bottom: 4px;
+}
+
+.compass-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.compass-energy-meter {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 8px 16px;
+  border-radius: 12px;
+  min-width: 90px;
+}
+
+.energy-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.energy-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.energy-unit {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 勝負時間帯 */
+.compass-peak-time {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.peak-time-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.peak-time-content {
+  flex: 1;
+}
+
+.peak-time-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.peak-time-badge {
+  background: var(--gold-primary);
+  color: #06080e;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.peak-time-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.peak-time-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+/* 3大行動プロトコル */
+.compass-protocol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.protocol-box {
+  background: rgba(10, 15, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.protocol-box:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.protocol-box-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #38bdf8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.protocol-icon {
+  font-size: 16px;
+}
+
+.protocol-box-text {
+  font-size: 13px;
+  line-height: 1.75;
+  color: #e2e8f0;
+}
+
+/* フッター（禁忌・微量開運） */
+.compass-footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+@media (max-width: 650px) {
+  .compass-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .compass-energy-meter {
+    align-self: flex-start;
+  }
+  .compass-footer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compass-taboo-box {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.taboo-label {
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.taboo-text {
+  color: #fecaca;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.compass-lucky-box {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.lucky-label {
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.lucky-text {
+  color: #a7f3d0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 五行レーダーチャートブロック */
+.radar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 25px;
+  background: rgba(10, 15, 26, 0.6);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#elements-radar-canvas {
+  max-width: 100%;
+}
+
+/* 五行プロファイル解説ボックス */
+.elements-profile-box {
+  width: 100%;
+  margin-top: 20px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-align: left;
+}
+
+.elements-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.elements-type-badge {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 12px;
+  letter-spacing: 1px;
+}
+
+.elements-profile-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fef08a;
+}
+
+.elements-profile-desc {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #e2e8f0;
+  margin-bottom: 14px;
+}
+
+.elements-remedy-note {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid var(--gold-primary);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.remedy-note-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+}
+
+.remedy-note-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #fef3c7;
+}
+
+.elements-philosophy {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.6;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+  font-style: italic;
+}
+
+/* 鑑定書詳細ブロック */
+.decree-block {
+  margin-bottom: 30px;
+  padding: 26px;
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 16px;
+  border-left: 4px solid var(--gold-primary);
+}
+
+.block-title {
+  font-size: 18px;
+  color: var(--gold-light);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.block-content {
+  font-size: 15px;
+  line-height: 1.9;
+  color: #e2e8f0;
+  white-space: pre-line;
+}
+
+/* 処方箋グリッド */
+.remedy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.remedy-item {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.remedy-label {
+  font-size: 12px;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+}
+
+.remedy-val {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 👑 プレミアム深層鑑定書（生涯10年年表）プレビュー */
+.premium-card {
+  margin-top: 40px;
+  background: linear-gradient(145deg, rgba(30, 27, 75, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 2px solid var(--gold-primary);
+  border-radius: 20px;
+  padding: 30px;
+  position: relative;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+}
+
+.premium-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  background: var(--gold-gradient);
+  color: #07090e;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 9999px;
+  margin-bottom: 12px;
+}
+
+.premium-title {
+  font-size: 22px;
+  color: var(--gold-light);
+  margin-bottom: 15px;
+}
+
+.timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 14px;
+}
+
+.timeline-table th, .timeline-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.timeline-table th {
+  color: var(--gold-light);
+  font-weight: 600;
+}
+
+/* SNSシェア用神聖オラクルカード (Holy Card) */
+.holy-card-container {
+  max-width: 420px;
+  margin: 35px auto 0 auto;
+  background: #0f172a;
+  border: 2px solid var(--gold-light);
+  border-radius: 18px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(245, 158, 11, 0.3);
+  position: relative;
+}
+
+.holy-card-header {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+}
+
+.holy-card-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold-gradient);
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+
+.holy-card-tarot {
+  font-size: 42px;
+  margin: 10px 0;
+}
+
+.holy-card-meta {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+/* アクションボタンバー */
+.decree-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  padding: 14px 28px;
+  background: transparent;
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  color: var(--gold-light);
+  font-family: 'Outfit', 'Noto Serif JP', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--gold-light);
+}
+
+.btn-print {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #d4af37, #b45309);
+  border: none;
+  border-radius: 10px;
+  color: #07090e;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+}
+
+.btn-print:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.55);
+}
+
+/* 印刷用スタイル */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  #star-canvas, .astrolabe-bg, .armillary-viewport, .input-section, .tarot-section, .decree-actions, .holy-card-container {
+    display: none !important;
+  }
+  .glass-card {
+    background: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    padding: 0 !important;
+  }
+  .decree-block, .premium-card, .daily-compass-card {
+    background: #f8fafc !important;
+    border-left: 4px solid #b45309 !important;
+    color: #1e293b !important;
+    box-shadow: none !important;
+  }
+  .protocol-box, .compass-taboo-box, .compass-lucky-box, .compass-peak-time {
+    background: #fff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+  }
+  .protocol-box-text, .taboo-text, .lucky-text, .peak-time-desc {
+    color: #334155 !important;
+  }
+  .compass-title {
+    color: #b45309 !important;
+  }
+  .peak-time-val {
+    color: #0f172a !important;
+  }
+}
